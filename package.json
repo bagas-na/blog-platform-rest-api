@@ -4,12 +4,15 @@
   "private": true,
   "scripts": {
     "start": "tsx ./src/bin/www.ts",
-    "devstart": "tsx --watch ./src/bin/www.ts"
+    "devstart": "tsx --watch ./src/bin/www.ts",
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "better-sqlite3": "^11.3.0",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
+    "dotenv": "^16.4.5",
     "drizzle-orm": "^0.33.0",
     "express": "^4.21.0",
     "http-errors": "~1.6.3",
@@ -19,6 +22,7 @@
     "tsx": "^4.19.1"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
     "@types/cookie-parser": "^1.4.7",
     "@types/debug": "^4.1.12",
     "@types/express": "^4.17.21",
