@@ -1,6 +1,7 @@
+import { eq } from "drizzle-orm";
 import { NextFunction, Request, Response, Router } from "express";
 import db from "../db/db";
-import { postsTable } from "../db/table";
+import { postsTable as posts } from "../db/table";
 
 interface NewPost {
   title: string;
@@ -31,21 +32,24 @@ const router = Router();
 router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   const post: NewPost = req.body;
   const { title, content, category, tags } = post;
-  // Validate the post data here...
+
+  // Add post data validation here...
   // Example: const isValid = validatePostData(post);
   // if (!isValid) {
   //   return res.status(400).send({ error: "Validation errors" });
   // }
-  console.log("Oh look, post request")
-  try {
-    await db.insert(postsTable).values({ title: title, content: content, category: category, tags: tags });
 
-    res.status(201).send({title, content, category, tags})
+  try {
+    const returnRow = await db
+      .insert(posts)
+      .values({ title: title, content: content, category: category, tags: tags })
+      .returning();
+
+    res.status(201).send(returnRow);
   } catch (err) {
     console.error(err);
-    res.status(404).send({
-      error: "Not Found",
-      message: "The you cannot post here.",
+    res.status(500).send({
+      error: "Internal server error. Your post request failed",
     });
     if (typeof err === "string") {
       throw new Error(err);
@@ -63,11 +67,39 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
  *   validation errors, or
  * - a `404 Not Found` status code if the blog post was not found.
  */
-router.put("/:postId", (req: Request, res: Response, next: NextFunction) => {
-  res.status(404).send({
-    error: "Not Found",
-    message: "The requested resource does not exist.",
-  });
+router.put("/:postId", async (req: Request, res: Response, next: NextFunction) => {
+  const postId = parseInt(req.params.postId || "");
+  const post: NewPost = req.body;
+  const { title, content, category, tags } = post;
+
+  // Add post data validation here...
+
+  try {
+    if (Number.isNaN(postId)) {
+      throw new Error("Post id is not type number");
+    }
+
+    const returnRow = await db
+      .update(posts)
+      .set({ title: title, content: content, category: category, tags: tags })
+      .where(eq(posts.id, postId))
+      .returning();
+
+    if(returnRow.length > 0) {
+      res.status(201).send(returnRow);
+    } else {
+      res.status(404).send(`Error. Post id '${postId}' does not exist. No post has been updated`)
+    }
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: "Internal server error. Your post request failed",
+    });
+    if (typeof err === "string") {
+      throw new Error(err);
+    }
+  }
 });
 
 /*
