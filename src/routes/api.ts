@@ -49,7 +49,7 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   } catch (err) {
     console.error(err);
     res.status(500).send({
-      error: "Internal server error. Your post request failed",
+      error: "Internal server error. Your post request has failed.",
     });
     if (typeof err === "string") {
       throw new Error(err);
@@ -85,16 +85,17 @@ router.put("/:postId", async (req: Request, res: Response, next: NextFunction) =
       .where(eq(posts.id, postId))
       .returning();
 
-    if(returnRow.length > 0) {
-      res.status(201).send(returnRow);
+    if (returnRow.length > 0) {
+      res.status(200).send(returnRow);
     } else {
-      res.status(404).send(`Error. Post id '${postId}' does not exist. No post has been updated`)
+      res
+        .status(404)
+        .send({ error: `Error. Post id '${postId}' does not exist. No post has been updated.` });
     }
-
   } catch (err) {
     console.error(err);
     res.status(500).send({
-      error: "Internal server error. Your post request failed",
+      error: "Internal server error. Your update request has failed.",
     });
     if (typeof err === "string") {
       throw new Error(err);
@@ -110,11 +111,32 @@ router.put("/:postId", async (req: Request, res: Response, next: NextFunction) =
  *    deleted, or
  *  - a `404 Not Found` status code if the blog post was not found.
  */
-router.delete("/:postId", (req: Request, res: Response, next: NextFunction) => {
-  res.status(404).send({
-    error: "Not Found",
-    message: "The requested resource does not exist.",
-  });
+router.delete("/:postId", async (req: Request, res: Response, next: NextFunction) => {
+  const postId = parseInt(req.params.postId || "");
+
+  try {
+    if (Number.isNaN(postId)) {
+      throw new Error("Post id is not type number");
+    }
+
+    const returnRow = await db.delete(posts).where(eq(posts.id, postId)).returning();
+
+    if (returnRow.length > 0) {
+      res.status(204).end();
+    } else {
+      res
+        .status(404)
+        .send({ error: `Error. Post id '${postId}' does not exist. No posts has been deleted.` });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: "Internal server error. Your delete request has failed.",
+    });
+    if (typeof err === "string") {
+      throw new Error(err);
+    }
+  }
 });
 
 /*
