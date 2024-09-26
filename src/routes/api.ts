@@ -146,12 +146,36 @@ router.delete("/:postId", async (req: Request, res: Response, next: NextFunction
  *  - a `200 OK` status code with the blog post [interface Post] object.
  *  - a `404 Not Found` status code if the blog post was not found.
  */
-router.get("/:postId", (req: Request, res: Response, next: NextFunction) => {
-  res.status(404).send({
-    error: "Not Found",
-    message: "The requested resource does not exist.",
-  });
-});
+router.get("/:postId", async (req: Request, res: Response, next: NextFunction) => {
+  const postId = parseInt(req.params.postId || "");
+
+  try {
+    if (Number.isNaN(postId)) {
+      throw new Error("Post id is not type number");
+    }
+
+    const returnRow = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.id, postId))
+
+    if (returnRow.length > 0) {
+      res.status(200).send(returnRow);
+    } else {
+      res
+        .status(404)
+        .send({ error: `Error. Post id '${postId}' does not exist.` });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      error: "Internal server error. Your update request has failed.",
+    });
+    if (typeof err === "string") {
+      throw new Error(err);
+    }
+  }
+})
 
 /*
  * GET ALL BLOG POSTS
