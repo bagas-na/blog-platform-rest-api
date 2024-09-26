@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, like, or } from "drizzle-orm";
 import { NextFunction, Request, Response, Router } from "express";
 import db from "../db/db";
 import { postsTable as posts } from "../db/table";
@@ -154,44 +154,67 @@ router.get("/:postId", async (req: Request, res: Response, next: NextFunction) =
       throw new Error("Post id is not type number");
     }
 
-    const returnRow = await db
-      .select()
-      .from(posts)
-      .where(eq(posts.id, postId))
+    const returnRow = await db.select().from(posts).where(eq(posts.id, postId));
 
     if (returnRow.length > 0) {
       res.status(200).send(returnRow);
     } else {
-      res
-        .status(404)
-        .send({ error: `Error. Post id '${postId}' does not exist.` });
+      res.status(404).send({ error: `Error. Post id '${postId}' does not exist.` });
     }
   } catch (err) {
     console.error(err);
     res.status(500).send({
-      error: "Internal server error. Your update request has failed.",
+      error: "Internal server error. Your get request has failed.",
     });
     if (typeof err === "string") {
       throw new Error(err);
     }
   }
-})
+});
 
 /*
  * GET ALL BLOG POSTS
  * Get all blog posts using the GET method.
  * The endpoint should return one of the following:
  * - a `200 OK` status code with an array of blog post [interface Post] objects
- * - a `400 Not Found` status code if there is no blog post.
  *
  * Optionally, the search can be filtered by a search term, using the ?term=
  * search parameter.
  */
-router.get("/", (req: Request, res: Response, next: NextFunction) => {
-  res.status(404).send({
-    error: "Not Found",
-    message: "The requested resource does not exist.",
-  });
-});
+router.get(
+  "/",
+  async (req: Request<{}, {}, {}, { term: string }>, res: Response, next: NextFunction) => {
+    const searchTerm: string = req.query.term || "";
+    let returnPosts: Array<typeof posts.$inferSelect> = [];
+
+    try {
+      if (searchTerm) {
+        returnPosts = await db
+          .select()
+          .from(posts)
+          .where(
+            or(
+              like(posts.title, `%${searchTerm}%`),
+              like(posts.content, `%${searchTerm}%`),
+              like(posts.category, `%${searchTerm}%`),
+              like(posts.tags, `%${searchTerm}%`)
+            )
+          );
+      } else {
+        returnPosts = await db.select().from(posts);
+      }
+
+      res.status(200).send(returnPosts);
+    } catch (err) {
+      console.error(err);
+      res.status(500).send({
+        error: "Internal server error. Your get request has failed.",
+      });
+      if (typeof err === "string") {
+        throw new Error(err);
+      }
+    }
+  }
+);
 
 export default router;
